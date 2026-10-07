@@ -1,75 +1,90 @@
 import streamlit as st
 from code_parser import parse_python_code, collect_leaves
-from pptx_generator import build_presentation
+from pptx_generator import build_presentation_from_code
 
-st.set_page_config(page_title="Python → PPTX Конвертер", page_icon="🐍", layout="wide")
+st.set_page_config(page_title="Python Код → PPTX", page_icon="🐍", layout="wide")
 
-st.title("🐍 Python → PowerPoint конвертер")
-st.caption("Вставьте любой Python-код — получите готовую презентацию с подсветкой синтаксиса на слайдах")
+st.title("🐍 Python Код → Обычная Презентация")
+st.caption("Вставьте Python-код. Приложение создаст слайды из описаний (docstring) и структуры.")
 
 with st.sidebar:
-    st.header("⚙️ Настройки презентации")
-    title = st.text_input("Название презентации", "Python Code Overview")
+    st.header("⚙️ Настройки")
+    title = st.text_input("Название презентации", "Документация проекта")
     author = st.text_input("Автор", "")
-    theme = st.selectbox("Тема оформления", ["dark", "light"], 
-                         format_func=lambda x: "🌙 Тёмная (Monokai)" if x == "dark" else "☀️ Светлая")
-    module_name = st.text_input("Имя модуля", "module")
+    theme = st.selectbox("Тема оформления", ["light", "dark"], 
+                         format_func=lambda x: "☀️ Светлая" if x == "light" else "🌙 Тёмная")
+    module_name = st.text_input("Имя модуля", "my_project")
 
-EXAMPLE_CODE = '''"""Пример модуля с классом и функциями."""
-
-
-def greet(name: str) -> str:
-    """Возвращает приветствие."""
-    return f"Hello, {name}!"
+EXAMPLE_CODE = '''"""
+Модуль для работы с пользователями базы данных.
+Содержит классы для CRUD операций и валидации.
+"""
 
 
-class Calculator:
-    """Простой калькулятор."""
+def validate_email(email: str) -> bool:
+    """
+    Проверяет корректность формата электронной почты.
+    Возвращает True, если email валиден, иначе False.
+    """
+    return "@" in email and "." in email
 
-    def __init__(self):
-        self.history = []
 
-    def add(self, a: float, b: float) -> float:
-        """Складывает два числа."""
-        result = a + b
-        self.history.append(("add", a, b, result))
-        return result
+class UserManager:
+    """Управляет жизненным циклом пользователей в системе."""
+
+    def __init__(self, db_connection):
+        """Инициализирует менеджер с подключением к БД."""
+        self.db = db_connection
+        self.cache = {}
+
+    def create_user(self, username: str, email: str) -> dict:
+        """
+        Создает нового пользователя.
+        
+        Args:
+            username: Уникальное имя пользователя
+            email: Адрес электронной почты
+            
+        Returns:
+            Словарь с данными созданного пользователя
+        """
+        if not validate_email(email):
+            raise ValueError("Некорректный email")
+        return {"username": username, "email": email, "status": "active"}
 
     @staticmethod
-    def pi() -> float:
-        return 3.14159265
+    def get_roles():
+        """Возвращает список доступных ролей."""
+        return ["admin", "user", "guest"]
 '''
 
-# Исправленная строка (убран параметр language="python")
 code = st.text_area(
     "Вставьте ваш Python-код сюда:",
     value=EXAMPLE_CODE,
     height=400,
-    help="Приложение автоматически извлечёт классы, функции, docstring и декораторы."
+    help="Приложение извлечет docstring и названия функций/классов для создания текстовых слайдов."
 )
 
-col1, col2 = st.columns([1, 4])
-with col1:
-    generate_btn = st.button("🚀 Сгенерировать .pptx", type="primary", use_container_width=True)
+generate_btn = st.button(" Создать презентацию", type="primary", use_container_width=True)
 
 if generate_btn:
     if not code.strip():
-        st.warning("⚠️ Пожалуйста, введите Python-код!")
+        st.warning("️ Пожалуйста, введите Python-код!")
     else:
         try:
-            with st.spinner("🔍 Анализирую структуру кода..."):
+            with st.spinner("🔍 Анализирую код..."):
                 root = parse_python_code(code, module_name=module_name)
                 elements = collect_leaves(root)
 
             if not elements:
-                st.info("ℹ️ В коде не найдено функций или классов. Будет создан только титульный слайд.")
+                st.info("ℹ️ В коде не найдено функций или классов. Будет создан только титульный слайд с описанием модуля.")
             else:
                 classes_count = sum(1 for e in elements if e.kind == "class")
                 funcs_count = sum(1 for e in elements if e.kind in ("function", "method"))
                 st.success(f"✅ Найдено: {len(elements)} элементов ({classes_count} классов, {funcs_count} функций)")
 
-            with st.spinner("🎨 Рисую слайды и добавляю подсветку синтаксиса..."):
-                pptx_buffer = build_presentation(
+            with st.spinner("📊 Генерирую слайды..."):
+                pptx_buffer = build_presentation_from_code(
                     root=root,
                     elements=elements,
                     title=title,
@@ -78,22 +93,15 @@ if generate_btn:
                 )
 
             st.download_button(
-                label="⬇️ Скачать презентацию (.pptx)",
+                label="⬇️ Скачать .pptx",
                 data=pptx_buffer,
-                file_name=f"{module_name}_presentation.pptx",
+                file_name=f"{module_name}_docs.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                 type="primary",
                 use_container_width=True,
             )
 
-            with st.expander("👁️ Предпросмотр структуры"):
-                for el in elements:
-                    icon = "🧩" if el.kind == "class" else "⚙️"
-                    st.markdown(f"{icon} **{el.name}** — *{el.kind}*")
-                    if el.docstring:
-                        st.caption(el.docstring.splitlines()[0])
-
         except ValueError as e:
             st.error(f"❌ Ошибка парсинга: {e}")
         except Exception as e:
-            st.error(f"💥 Неожиданная ошибка при генерации: {e}")
+            st.error(f" Неожиданная ошибка: {e}")
