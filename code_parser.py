@@ -5,8 +5,7 @@ from typing import List, Optional
 
 @dataclass
 class CodeElement:
-    """Представляет один элемент кода (функцию, класс или метод) для слайда."""
-    kind: str                    # 'module' | 'class' | 'function' | 'method'
+    kind: str
     name: str
     docstring: Optional[str] = None
     source: str = ""
@@ -18,18 +17,12 @@ class CodeElement:
 
 
 def parse_python_code(source: str, module_name: str = "module") -> CodeElement:
-    """Разбирает Python-код и возвращает корневой элемент дерева."""
     try:
         tree = ast.parse(source)
     except SyntaxError as e:
         raise ValueError(f"Ошибка синтаксиса в коде: {e}")
 
     lines = source.splitlines()
-
-    def _get_source(node) -> str:
-        start = node.lineno - 1
-        end = getattr(node, "end_lineno", node.lineno)
-        return "\n".join(lines[start:end])
 
     def _get_decorators(node) -> List[str]:
         return [ast.unparse(d) for d in getattr(node, "decorator_list", [])]
@@ -52,7 +45,7 @@ def parse_python_code(source: str, module_name: str = "module") -> CodeElement:
                 kind="class",
                 name=node.name,
                 docstring=ast.get_docstring(node),
-                source=_get_source(node),
+                source="\n".join(lines[node.lineno - 1:getattr(node, "end_lineno", node.lineno)]),
                 line_start=node.lineno,
                 line_end=getattr(node, "end_lineno", node.lineno),
                 decorators=_get_decorators(node),
@@ -63,7 +56,7 @@ def parse_python_code(source: str, module_name: str = "module") -> CodeElement:
                         kind="method",
                         name=item.name,
                         docstring=ast.get_docstring(item),
-                        source=_get_source(item),
+                        source="\n".join(lines[item.lineno - 1:getattr(item, "end_lineno", item.lineno)]),
                         line_start=item.lineno,
                         line_end=getattr(item, "end_lineno", item.lineno),
                         decorators=_get_decorators(item),
@@ -77,7 +70,7 @@ def parse_python_code(source: str, module_name: str = "module") -> CodeElement:
                 kind="function",
                 name=node.name,
                 docstring=ast.get_docstring(node),
-                source=_get_source(node),
+                source="\n".join(lines[node.lineno - 1:getattr(node, "end_lineno", node.lineno)]),
                 line_start=node.lineno,
                 line_end=getattr(node, "end_lineno", node.lineno),
                 decorators=_get_decorators(node),
@@ -89,7 +82,6 @@ def parse_python_code(source: str, module_name: str = "module") -> CodeElement:
 
 
 def collect_leaves(root: CodeElement) -> List[CodeElement]:
-    """Возвращает плоский список всех элементов для последовательного отображения на слайдах."""
     result = []
     for child in root.children:
         result.append(child)
