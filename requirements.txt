@@ -1,3 +1,2 @@
-   streamlit
-   python-pptx
-   pygments
+streamlit
+python-pptx
