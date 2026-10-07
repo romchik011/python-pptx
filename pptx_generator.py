@@ -9,6 +9,7 @@ from pygments.lexers import PythonLexer
 from pygments.token import Token
 from code_parser import CodeElement
 
+# Цветовые схемы (Monokai Dark и Light)
 THEMES = {
     "dark": {
         "bg": RGBColor(0x27, 0x28, 0x22),
@@ -74,11 +75,13 @@ def _add_textbox(slide, left, top, width, height, text,
     return txBox
 
 
-def _colorize_code(tf, code, theme, font_size=Pt(10)):
+def _colorize_code(tf, code: str, theme: dict, font_size=Pt(10)):
+    """Раскрашивает код по токенам Pygments прямо в text_frame презентации."""
     tf.word_wrap = True
     default_color = theme["text"]
     lexer = PythonLexer()
     first = True
+    
     for ttype, value in lex(code, lexer):
         color = default_color
         tt = ttype
@@ -86,6 +89,7 @@ def _colorize_code(tf, code, theme, font_size=Pt(10)):
             tt = tt.parent
         if tt:
             color = theme["token_colors"][tt]
+
         for line_idx, line in enumerate(value.split("\n")):
             if not first and line_idx == 0 and "\n" in value:
                 p = tf.add_paragraph()
@@ -94,6 +98,7 @@ def _colorize_code(tf, code, theme, font_size=Pt(10)):
                 p = tf.paragraphs[0]
                 p.font.size = font_size
                 first = False
+            
             if line:
                 run = p.add_run()
                 run.text = line
@@ -102,62 +107,68 @@ def _colorize_code(tf, code, theme, font_size=Pt(10)):
                 run.font.color.rgb = color
 
 
-def _add_code_block(slide, left, top, width, height, code, theme):
+def _add_code_block(slide, left, top, width, height, code: str, theme: dict):
+    """Добавляет прямоугольник с фоном и подсвеченным кодом."""
     shape = slide.shapes.add_shape(1, left, top, width, height)
     shape.fill.solid()
     shape.fill.fore_color.rgb = theme["code_bg"]
     shape.line.fill.background()
+    
     tf = shape.text_frame
     tf.margin_left = Pt(10)
     tf.margin_right = Pt(10)
     tf.margin_top = Pt(8)
     tf.margin_bottom = Pt(8)
     tf.word_wrap = True
+    
     _colorize_code(tf, code, theme, font_size=Pt(11))
     return shape
 
 
-def build_presentation(root, elements, title="Python Code Overview",
-                       author="", theme_name="dark"):
+def build_presentation(root: CodeElement, elements: List[CodeElement], 
+                       title: str = "Python Code Overview", author: str = "", 
+                       theme_name: str = "dark") -> BytesIO:
+    """Собирает полную презентацию из разобранных элементов кода."""
     theme = THEMES[theme_name]
     prs = Presentation()
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
-    blank = prs.slide_layouts[6]
+    blank_layout = prs.slide_layouts[6]
 
-    slide = prs.slides.add_slide(blank)
+    # 1. Титульный слайд
+    slide = prs.slides.add_slide(blank_layout)
     _set_slide_bg(slide, theme["bg"])
     _add_textbox(slide, Inches(1), Inches(2.2), Inches(11), Inches(1.2),
-                 title, font_size=44, bold=True, color=theme["title"],
-                 align=PP_ALIGN.CENTER)
+                 title, font_size=44, bold=True, color=theme["title"], align=PP_ALIGN.CENTER)
+    
     subtitle = f"{root.name}.py" if root.name != "module" else ""
     if subtitle:
         _add_textbox(slide, Inches(1), Inches(3.5), Inches(11), Inches(0.8),
-                     subtitle, font_size=24, color=theme["accent"],
-                     align=PP_ALIGN.CENTER)
+                     subtitle, font_size=24, color=theme["accent"], align=PP_ALIGN.CENTER)
     if author:
         _add_textbox(slide, Inches(1), Inches(5.5), Inches(11), Inches(0.6),
-                     f"Автор: {author}", font_size=18, color=theme["muted"],
-                     align=PP_ALIGN.CENTER)
+                     f"Автор: {author}", font_size=18, color=theme["muted"], align=PP_ALIGN.CENTER)
 
+    # 2. Слайд со структурой (Оглавление)
     if elements:
-        slide = prs.slides.add_slide(blank)
+        slide = prs.slides.add_slide(blank_layout)
         _set_slide_bg(slide, theme["bg"])
         _add_textbox(slide, Inches(0.7), Inches(0.4), Inches(11), Inches(0.8),
-                     "Структура проекта", font_size=32, bold=True,
-                     color=theme["title"])
-        tf_box = slide.shapes.add_textbox(Inches(0.9), Inches(1.4),
-                                          Inches(11), Inches(5.5))
+                     "📋 Структура проекта", font_size=32, bold=True, color=theme["title"])
+        
+        tf_box = slide.shapes.add_textbox(Inches(0.9), Inches(1.4), Inches(11), Inches(5.5))
         tf = tf_box.text_frame
         tf.word_wrap = True
+        
         for i, el in enumerate(elements):
-            prefix = "class: " if el.kind == "class" else "func: "
-            line = f"{prefix}{el.name}"
+            prefix = " " if el.kind == "class" else "⚙️ "
+            line = f"{prefix}{el.kind}: {el.name}"
             if el.args and el.kind != "class":
                 line += f"({el.args})"
             if el.docstring:
                 short = el.docstring.splitlines()[0][:80]
-                line += f"  -  {short}"
+                line += f"  —  {short}"
+
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
             p.text = line
             p.font.size = Pt(16)
@@ -165,41 +176,46 @@ def build_presentation(root, elements, title="Python Code Overview",
             p.font.color.rgb = theme["text"]
             p.space_after = Pt(6)
 
+    # 3. Слайды для каждого элемента кода
     for el in elements:
-        slide = prs.slides.add_slide(blank)
+        slide = prs.slides.add_slide(blank_layout)
         _set_slide_bg(slide, theme["bg"])
-        kind_label = {"class": "Класс", "function": "Функция",
-                      "method": "Метод"}.get(el.kind, el.kind)
+
+        kind_label = {"class": "🧩 Класс", "function": "⚙️ Функция", "method": "🔧 Метод"}.get(el.kind, el.kind)
         header = f"{kind_label}: {el.name}"
         if el.args and el.kind != "class":
             header += f"({el.args})"
+            
         _add_textbox(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
                      header, font_size=26, bold=True, color=theme["title"])
+
         y = Inches(1.0)
+        # Декораторы
         if el.decorators:
+            dec_text = " @" + " @".join(el.decorators)
             _add_textbox(slide, Inches(0.6), y, Inches(12), Inches(0.4),
-                         " @" + " @".join(el.decorators),
-                         font_size=14, color=theme["accent"])
+                         dec_text, font_size=14, color=theme["accent"])
             y = Inches(1.4)
+
+        # Docstring (описание)
         if el.docstring:
             _add_textbox(slide, Inches(0.6), y, Inches(12), Inches(1.2),
-                         el.docstring.strip(), font_size=14,
-                         color=theme["muted"])
+                         el.docstring.strip(), font_size=14, color=theme["muted"])
             y = y + Inches(1.3)
+
+        # Блок с кодом
         code_height = Inches(7.5) - y - Inches(0.3)
         if code_height < Inches(1):
             code_height = Inches(1)
-        _add_code_block(slide, Inches(0.5), y, Inches(12.3), code_height,
-                        el.source, theme)
+        _add_code_block(slide, Inches(0.5), y, Inches(12.3), code_height, el.source, theme)
 
-    slide = prs.slides.add_slide(blank)
+    # 4. Финальный слайд
+    slide = prs.slides.add_slide(blank_layout)
     _set_slide_bg(slide, theme["bg"])
     _add_textbox(slide, Inches(1), Inches(3), Inches(11), Inches(1),
-                 "Спасибо за внимание!", font_size=40, bold=True,
-                 color=theme["title"], align=PP_ALIGN.CENTER)
+                 "✨ Спасибо за внимание!", font_size=40, bold=True, color=theme["title"], align=PP_ALIGN.CENTER)
 
     buffer = BytesIO()
     prs.save(buffer)
     buffer.seek(0)
     return buffer
-
