@@ -2,10 +2,10 @@ import streamlit as st
 from code_parser import parse_python_code, collect_leaves
 from pptx_generator import build_presentation
 
-st.set_page_config(page_title="Python → PPTX Конвертер", page_icon="", layout="wide")
+st.set_page_config(page_title="Python → PPTX Конвертер", page_icon="🐍", layout="wide")
 
-st.title(" Python → PowerPoint конвертер")
-st.caption("Вставьте любой Python-код — получите готовую презентацию с подсветкой синтаксиса")
+st.title("🐍 Python → PowerPoint конвертер")
+st.caption("Вставьте любой Python-код — получите готовую презентацию с подсветкой синтаксиса на слайдах")
 
 with st.sidebar:
     st.header("⚙️ Настройки презентации")
@@ -40,11 +40,11 @@ class Calculator:
         return 3.14159265
 '''
 
+# Исправленная строка (убран параметр language="python")
 code = st.text_area(
     "Вставьте ваш Python-код сюда:",
     value=EXAMPLE_CODE,
     height=400,
-    language="python",
     help="Приложение автоматически извлечёт классы, функции, docstring и декораторы."
 )
 
@@ -57,7 +57,7 @@ if generate_btn:
         st.warning("⚠️ Пожалуйста, введите Python-код!")
     else:
         try:
-            with st.spinner(" Анализирую структуру кода..."):
+            with st.spinner("🔍 Анализирую структуру кода..."):
                 root = parse_python_code(code, module_name=module_name)
                 elements = collect_leaves(root)
 
@@ -68,7 +68,7 @@ if generate_btn:
                 funcs_count = sum(1 for e in elements if e.kind in ("function", "method"))
                 st.success(f"✅ Найдено: {len(elements)} элементов ({classes_count} классов, {funcs_count} функций)")
 
-            with st.spinner("🎨 Рисую слайды и подсвечиваю синтаксис..."):
+            with st.spinner("🎨 Рисую слайды и добавляю подсветку синтаксиса..."):
                 pptx_buffer = build_presentation(
                     root=root,
                     elements=elements,
