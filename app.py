@@ -4,58 +4,71 @@ from pptx_generator import build_presentation_from_code
 
 st.set_page_config(page_title="Python Код → PPTX", page_icon="📊", layout="wide")
 
-st.title("📊 Python Код → Обычная Презентация")
-st.caption("Вставьте Python-код. Приложение создаст слайды из описаний (docstring) и структуры, БЕЗ отображения самого кода.")
+st.title("📊 Python Код → Презентация (неограниченное количество слайдов)")
+st.caption("Вставьте Python-код. Приложение создаст столько слайдов, сколько нужно!")
 
 with st.sidebar:
     st.header("⚙️ Настройки")
     title = st.text_input("Название презентации", "Документация проекта")
     author = st.text_input("Автор", "")
-    theme = st.selectbox("Тема оформления", ["light", "dark"], format_func=lambda x: "☀️ Светлая" if x == "light" else "🌙 Тёмная")
+    theme = st.selectbox("Тема оформления", ["light", "dark"], 
+                         format_func=lambda x: "☀️ Светлая" if x == "light" else " Тёмная")
     module_name = st.text_input("Имя модуля", "my_project")
+    
+    st.divider()
+    st.subheader("📏 Настройки слайдов")
+    max_chars = st.slider("Максимум символов на слайд", 200, 800, 400, 
+                          help="Если описание длинное, оно разобьется на несколько слайдов")
 
 EXAMPLE_CODE = '''"""
-Модуль для работы с пользователями базы данных.
-Содержит классы для CRUD операций и валидации данных.
+Большой модуль для демонстрации.
+Содержит много классов и функций для создания презентации.
 """
 
-def validate_email(email: str) -> bool:
-    """
-    Проверяет корректность формата электронной почты.
-    Возвращает True, если email валиден, иначе False.
-    """
-    return "@" in email and "." in email
+def function_one():
+    """Первая функция с описанием."""
+    pass
 
-class UserManager:
-    """Управляет жизненным циклом пользователей в системе."""
+def function_two():
+    """Вторая функция с описанием."""
+    pass
 
-    def __init__(self, db_connection):
-        """Инициализирует менеджер с подключением к базе данных."""
-        self.db = db_connection
-        self.cache = {}
+def function_three():
+    """Третья функция с описанием."""
+    pass
 
-    def create_user(self, username: str, email: str) -> dict:
-        """
-        Создает нового пользователя в системе.
-        
-        Args:
-            username: Уникальное имя пользователя
-            email: Адрес электронной почты
-            
-        Returns:
-            Словарь с данными созданного пользователя
-        """
-        if not validate_email(email):
-            raise ValueError("Некорректный email")
-        return {"username": username, "email": email, "status": "active"}
+class ClassOne:
+    """Первый класс."""
+    
+    def method_one(self):
+        """Метод первого класса."""
+        pass
+    
+    def method_two(self):
+        """Еще один метод."""
+        pass
+
+class ClassTwo:
+    """Второй класс."""
+    
+    def method_one(self):
+        """Метод второго класса."""
+        pass
+
+def function_four():
+    """Четвертая функция."""
+    pass
+
+def function_five():
+    """Пятая функция."""
+    pass
 '''
 
-# ВАЖНО: здесь НЕТ параметра language="python", чтобы не было ошибки
 code = st.text_area(
     "Вставьте ваш Python-код сюда:",
     value=EXAMPLE_CODE,
     height=400,
-    help="Приложение извлечет docstring и названия функций/классов для создания текстовых слайдов."
+    help="Чем больше функций и классов, тем больше слайдов будет создано!"
 )
 
 generate_btn = st.button("🚀 Создать презентацию", type="primary", use_container_width=True)
@@ -70,25 +83,27 @@ if generate_btn:
                 elements = collect_leaves(root)
 
             if not elements:
-                st.info("ℹ️ В коде не найдено функций или классов. Будет создан только титульный слайд.")
+                st.info("ℹ️ В коде не найдено функций или классов.")
             else:
                 classes_count = sum(1 for e in elements if e.kind == "class")
                 funcs_count = sum(1 for e in elements if e.kind in ("function", "method"))
                 st.success(f"✅ Найдено: {len(elements)} элементов ({classes_count} классов, {funcs_count} функций)")
+                st.info(f"📊 Будет создано примерно {len(elements) + 3} слайдов")
 
-            with st.spinner("📊 Генерирую обычные текстовые слайды..."):
+            with st.spinner("📊 Генерирую презентацию..."):
                 pptx_buffer = build_presentation_from_code(
                     root=root,
                     elements=elements,
                     title=title,
                     author=author,
                     theme_name=theme,
+                    max_chars_per_slide=max_chars,
                 )
 
             st.download_button(
-                label="⬇️ Скачать обычную презентацию (.pptx)",
+                label="⬇️ Скачать презентацию (.pptx)",
                 data=pptx_buffer,
-                file_name=f"{module_name}_docs.pptx",
+                file_name=f"{module_name}_presentation.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                 type="primary",
                 use_container_width=True,
