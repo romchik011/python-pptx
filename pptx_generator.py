@@ -1,4 +1,4 @@
-﻿from io import BytesIO
+from io import BytesIO
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
@@ -95,9 +95,8 @@ def build_presentation_from_code(root, elements, title="Документация
             add_textbox(slide, Inches(1), y_pos, Inches(11), Inches(0.5), f"Декораторы: @{', @'.join(el.decorators)}", font_size=16, color=theme["muted"])
             y_pos = Inches(2.4)
 
-        content_text = el.docstring.strip() if el.docstring else "Описание отсутствует. Добавьте строку документации (docstring) в код."
+        content_text = el.docstring.strip() if el.docstring else "Описание отсутствует."
         
-        # Разбиваем текст на абзацы для красивого отображения
         for para in content_text.split('\n\n'):
             add_textbox(slide, Inches(1), y_pos, Inches(11), Inches(4), para.strip(), font_size=20, color=theme["text"])
             y_pos += Inches(1.2)
