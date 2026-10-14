@@ -5,6 +5,8 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 import io
 import re
+import requests
+import json
 
 # ============================================================
 # ФУНКЦИИ ДЛЯ СОЗДАНИЯ ПРЕЗЕНТАЦИИ
@@ -173,125 +175,38 @@ def create_presentation(slides):
     return output
 
 # ============================================================
-# БАЗА ЗНАНИЙ
+# ИНТЕГРАЦИЯ С OPENAI API
 # ============================================================
 
-KNOWLEDGE_BASE = {
-    "моцарт": {
-        "title": "Вольфганг Амадей Моцарт",
-        "slides": [
-            ("Ранние годы", ["Родился 27 января 1756 года в Зальцбурге", "Отец — Леопольд Моцарт, композитор", "Мать — Анна Мария Моцарт", "С детства проявлял музыкальные способности"]),
-            ("Музыкальный вундеркинд", ["Начал играть на клавесине в 3 года", "В 5 лет сочинял маленькие пьесы", "В 6 лет выступал перед императорским двором", "К 8 годам написал первые симфонии"]),
-            ("Европейские гастроли", ["С 1762 года путешествовал по Европе", "Выступал в Вене, Париже, Лондоне", "Познакомился с великими музыкантами", "Впитал лучшие традиции музыки"]),
-            ("Зрелые годы в Вене", ["В 1781 году переехал в Вену", "Стал независимым композитором", "Давал уроки и концерты", "Создал главные шедевры"]),
-            ("Великие оперы", ["«Свадьба Фигаро» (1786)", "«Дон Жуан» (1787)", "«Так поступают все» (1790)", "«Волшебная флейта» (1791)"]),
-            ("Наследие", ["Более 600 произведений", "Вершина венского классицизма", "Влияние на Бетховена и Чайковского", "Музыка актуальна спустя 200+ лет"])
-        ]
-    },
-    "джокер": {
-        "title": "Джокер — культовый персонаж",
-        "slides": [
-            ("Кто такой Джокер?", ["Главный злодей вселенной DC Comics", "Заклятый враг Бэтмена", "Символ хаоса и безумия", "Один из самых узнаваемых злодеев"]),
-            ("Первое появление", ["Дебютировал в комиксе Batman #1 в 1940 году", "Создан Биллом Фингером и Бобом Кейном", "Изначально планировалось убить персонажа", "Популярность спасла его от смерти"]),
-            ("Образ в кино", ["Джэк Николсон — «Бэтмен» (1989)", "Хит Леджер — «Тёмный рыцарь» (2008)", "Хоакин Феникс — «Джокер» (2019)", "Джаред Лето — «Отряд самоубийц»"]),
-            ("Фильм 2019 года", ["Режиссёр — Тодд Филлипс", "Хоакин Феникс получил «Оскар»", "Собрал более 1 миллиарда долларов", "Показал историю становления злодея"]),
-            ("Психология персонажа", ["Символ социального неравенства", "Отражение тёмной стороны общества", "Противопоставление порядку Бэтмена", "Философия хаоса и анархии"]),
-            ("Культурное влияние", ["Тысячи фанатов по всему миру", "Популярный косплей", "Влияние на поп-культуру", "Тема для научных исследований"])
-        ]
-    },
-    "ромашка": {
-        "title": "Ромашка аптечная",
-        "slides": [
-            ("Что такое ромашка?", ["Многолетнее травянистое растение семейства Астровых", "Научное название — Matricaria chamomilla", "Один из самых известных лекарственных цветов", "Распространена в Европе, Азии и Северной Америке"]),
-            ("Как распознать?", ["Белые лепестки вокруг жёлтой конусовидной сердцевины", "Сердцевина внутри полая — главный отличительный признак", "Специфический яблочный аромат", "Высота стебля от 15 до 60 см"]),
-            ("Лечебные свойства", ["Противовоспалительное и антисептическое действие", "Успокаивает нервную систему и улучшает сон", "Снимает спазмы и боль в желудке", "Укрепляет иммунитет и помогает при простуде"]),
-            ("Применение в медицине", ["Отвары и настои для полоскания горла", "Чай из ромашки при бессоннице и стрессе", "Компрессы при воспалениях кожи и глаз", "Входит в состав многих фармацевтических препаратов"]),
-            ("Использование в косметологии", ["Осветляет волосы и придаёт золотистый оттенок", "Успокаивает раздражённую и чувствительную кожу", "Входит в состав кремов, шампуней и масок", "Эфирное масло ромашки используется в ароматерапии"]),
-            ("Интересные факты", ["Название происходит от латинского «matrix» (матка)", "В Древнем Египте посвящалась богу солнца Ра", "Ромашковый чай — один из самых популярных в мире", "Не путать с нивяником, у которого сердцевина сплошная")],
-        ]
-    },
-    "python": {
-        "title": "Язык программирования Python",
-        "slides": [
-            ("Что такое Python?", ["Высокоуровневый язык программирования", "Создан Гвидо ван Россумом в 1991 году", "Один из самых популярных языков", "Простой и понятный синтаксис"]),
-            ("Преимущества", ["Огромное сообщество разработчиков", "Тысячи готовых библиотек", "Кроссплатформенность", "Быстрая разработка"]),
-            ("Применение", ["Веб-разработка (Django, Flask)", "Искусственный интеллект", "Анализ данных", "Автоматизация задач"]),
-            ("Популярные библиотеки", ["NumPy — математика", "Pandas — анализ данных", "TensorFlow — машинное обучение", "Requests — работа с HTTP"]),
-            ("Как начать", ["Установите Python с python.org", "Выберите редактор (VS Code)", "Изучите основы", "Практикуйтесь на задачах"])
-        ]
-    },
-    "космос": {
-        "title": "Космос и Вселенная",
-        "slides": [
-            ("Солнечная система", ["Солнце — звезда в центре", "8 планет вокруг Солнца", "Земля — наш дом", "Есть астероиды и кометы"]),
-            ("Звёзды и галактики", ["Звёзды — шары раскалённого газа", "Наша галактика — Млечный Путь", "Триллионы галактик во Вселенной", "Ближайшая звезда — Проксима Центавра"]),
-            ("Исследование космоса", ["1957 — первый спутник", "1961 — Гагарин в космосе", "1969 — высадка на Луну", "Сегодня работает МКС"]),
-            ("Чёрные дыры", ["Огромная гравитация", "Свет не может их покинуть", "Образуются при гибели звёзд", "Первое фото в 2019 году"]),
-            ("Будущее", ["Полёты на Марс", "Космический туризм", "Поиск внеземной жизни", "Колонизация планет"])
-        ]
+def call_openai(api_key, prompt, model="gpt-3.5-turbo"):
+    """Вызов OpenAI API"""
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
     }
-}
+    
+    data = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 2000
+    }
+    
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"Ошибка API: {str(e)}"
 
-UNIVERSAL_TEMPLATES = {
-    "default": [
-        ("Введение", ["Краткое описание темы", "Актуальность и важность", "Цели и задачи"]),
-        ("Основные понятия", ["Ключевое понятие 1", "Ключевое понятие 2", "Ключевое понятие 3"]),
-        ("История", ["Начало развития", "Ключевые этапы", "Современное состояние"]),
-        ("Применение", ["Область применения 1", "Область применения 2", "Область применения 3"]),
-        ("Преимущества", ["Положительная сторона 1", "Положительная сторона 2", "Положительная сторона 3"]),
-        ("Примеры", ["Пример 1", "Пример 2", "Пример 3"]),
-        ("Проблемы", ["Проблема 1", "Проблема 2", "Пути решения"]),
-        ("Будущее", ["Тенденции развития", "Перспективы", "Прогнозы"]),
-        ("Заключение", ["Основные выводы", "Значение темы", "Призыв к действию"])
-    ]
-}
-
-# ============================================================
-# ГЕНЕРАТОР
-# ============================================================
-
-def extract_params(message):
-    msg = message.lower().strip()
+def generate_presentation_with_ai(api_key, topic, num_slides=5, color_theme="blue"):
+    """Генерация презентации через ИИ"""
     
-    num_match = re.search(r'(\d+)\s*слайд', msg)
-    num_slides = int(num_match.group(1)) if num_match else 5
-    
-    color_theme = "blue"
-    if any(w in msg for w in ['красн', 'red']):
-        color_theme = "red"
-    elif any(w in msg for w in ['зелён', 'green', 'зелен']):
-        color_theme = "green"
-    elif any(w in msg for w in ['фиолет', 'purple']):
-        color_theme = "purple"
-    elif any(w in msg for w in ['тёмн', 'dark', 'темн', 'чёрн', 'черн']):
-        color_theme = "dark"
-    
-    topic = message
-    remove_words = [
-        'сделай', 'создай', 'генерируй', 'напиши', 'покажи',
-        'презентацию', 'презентация', 'слайдов', 'слайд',
-        'про', 'на', 'тему', 'тема', 'темы',
-        'красную', 'красной', 'красный',
-        'зелёную', 'зеленой', 'зеленый',
-        'фиолетовую', 'фиолетовой',
-        'тёмную', 'темную', 'тёмный', 'темный',
-        'синюю', 'синий', 'синего'
-    ]
-    for word in remove_words:
-        topic = topic.replace(word, '')
-    
-    topic = re.sub(r'\d+', '', topic)
-    topic = topic.strip(' ,.-–—!?:;')
-    topic = ' '.join(topic.split())
-    
-    if not topic:
-        topic = "Презентация"
-    
-    topic = topic[0].upper() + topic[1:] if topic else "Презентация"
-    
-    return topic, num_slides, color_theme
-
-def generate_template(topic, num_slides=5, color_theme="blue"):
     color_themes = {
         "blue": {"bg1": "#0a192f", "bg2": "#112240", "bg3": "#1a2f4a", "title": "#64ffda", "text": "#ccd6f6"},
         "red": {"bg1": "#2d0a0a", "bg2": "#4a0f0f", "bg3": "#6b1515", "title": "#ff6b6b", "text": "#ffd4d4"},
@@ -301,78 +216,115 @@ def generate_template(topic, num_slides=5, color_theme="blue"):
     }
     
     colors = color_themes.get(color_theme, color_themes["blue"])
-    
-    topic_lower = topic.lower()
-    matched = None
-    for key in KNOWLEDGE_BASE:
-        if key in topic_lower or topic_lower in key:
-            matched = key
-            break
-    
-    if matched:
-        data = KNOWLEDGE_BASE[matched]
-        slides_data = data["slides"]
-        main_title = data["title"]
-    else:
-        slides_data = UNIVERSAL_TEMPLATES["default"]
-        main_title = topic
-    
-    slides_data = slides_data[:num_slides]
-    
     bg_colors = [colors["bg1"], colors["bg2"], colors["bg3"]]
+    
+    prompt = f"""Создай структуру презентации на тему "{topic}" из {num_slides} слайдов.
+
+Для каждого слайда укажи:
+1. Заголовок слайда
+2. 3-4 пункта с конкретной информацией (не общие фразы, а реальные факты)
+
+Формат ответа (строго следуй):
+
+СЛАЙД 1: [Заголовок титульного слайда]
+ПОДЗАГОЛОВОК: [Краткое описание]
+
+СЛАЙД 2: [Заголовок]
+- [Пункт 1]
+- [Пункт 2]
+- [Пункт 3]
+
+СЛАЙД 3: [Заголовок]
+- [Пункт 1]
+- [Пункт 2]
+- [Пункт 3]
+
+И так далее для всех {num_slides} слайдов.
+
+ВАЖНО: Пиши конкретные факты, даты, имена, цифры. Не используй общие фразы типа "Ключевое понятие 1"."""
+    
+    response = call_openai(api_key, prompt)
+    
+    if response.startswith("Ошибка API:"):
+        return None, response
+    
+    # Парсим ответ ИИ
+    slides_data = []
+    current_slide = None
+    
+    for line in response.split('\n'):
+        line = line.strip()
+        
+        if line.startswith('СЛАЙД') and ':' in line:
+            if current_slide:
+                slides_data.append(current_slide)
+            title = line.split(':', 1)[1].strip()
+            current_slide = {'title': title, 'points': []}
+        elif line.startswith('ПОДЗАГОЛОВОК') and ':' in line:
+            if current_slide:
+                subtitle = line.split(':', 1)[1].strip()
+                current_slide['points'].append(subtitle)
+        elif line.startswith('-') and current_slide:
+            point = line[1:].strip()
+            current_slide['points'].append(point)
+    
+    if current_slide:
+        slides_data.append(current_slide)
+    
+    # Генерируем шаблон
     template_lines = []
     
-    template_lines.append("=== СЛАЙД 1 ===")
-    template_lines.append(f"@bg: {colors['bg1']}")
-    template_lines.append("@font: Georgia")
-    template_lines.append(f"@title_size: 44")
-    template_lines.append(f"@title_color: {colors['title']}")
-    template_lines.append(f"@color: {colors['text']}")
-    template_lines.append("")
-    template_lines.append(main_title)
-    template_lines.append(f"Презентация на тему: {topic}")
-    template_lines.append("")
-    
-    for i, (slide_title, points) in enumerate(slides_data, 2):
-        bg = bg_colors[(i - 2) % 3]
-        template_lines.append(f"=== СЛАЙД {i} ===")
-        template_lines.append(f"@bg: {bg}")
-        template_lines.append("@font: Arial")
-        template_lines.append("@size: 22")
-        template_lines.append("@title_size: 34")
+    # Титульный слайд
+    if slides_data:
+        template_lines.append("=== СЛАЙД 1 ===")
+        template_lines.append(f"@bg: {colors['bg1']}")
+        template_lines.append("@font: Georgia")
+        template_lines.append(f"@title_size: 44")
         template_lines.append(f"@title_color: {colors['title']}")
         template_lines.append(f"@color: {colors['text']}")
         template_lines.append("")
-        template_lines.append(slide_title)
-        for point in points:
-            template_lines.append(f"- {point}")
+        template_lines.append(slides_data[0]['title'])
+        if slides_data[0]['points']:
+            template_lines.append(slides_data[0]['points'][0])
         template_lines.append("")
+        
+        # Остальные слайды
+        for i, slide in enumerate(slides_data[1:], 2):
+            bg = bg_colors[(i - 2) % 3]
+            template_lines.append(f"=== СЛАЙД {i} ===")
+            template_lines.append(f"@bg: {bg}")
+            template_lines.append("@font: Arial")
+            template_lines.append("@size: 22")
+            template_lines.append("@title_size: 34")
+            template_lines.append(f"@title_color: {colors['title']}")
+            template_lines.append(f"@color: {colors['text']}")
+            template_lines.append("")
+            template_lines.append(slide['title'])
+            for point in slide['points']:
+                template_lines.append(f"- {point}")
+            template_lines.append("")
     
-    return "\n".join(template_lines)
+    return "\n".join(template_lines), None
 
-def ai_response(message):
-    msg_lower = message.lower()
+def edit_text_with_ai(api_key, current_text, instruction):
+    """Редактирование текста через ИИ"""
     
-    if any(w in msg_lower for w in ['привет', 'здравствуй', 'hi', 'hello', 'хай']):
-        return "Привет! 👋 Напишите тему презентации, например: **«ромашка 5 слайдов»** или **«моцарт синяя тема»**"
-    
-    if any(w in msg_lower for w in ['помощь', 'help', 'как']):
-        return """**Примеры запросов:**
-- «ромашка 5 слайдов»
-- «моцарт 8 слайдов синяя тема»
-- «космос красная тема»
-- «python 6 слайдов зелёная»
+    prompt = f"""У тебя есть текст презентации в специальном формате:
 
-Просто напишите тему и количество слайдов!"""
+{current_text}
+
+Задача пользователя: {instruction}
+
+Измени текст согласно задаче. Сохрани формат:
+- === СЛАЙД X === для разделения слайдов
+- @bg:, @font:, @size: и т.д. для настроек
+- Первая строка после настроек - заголовок
+- Остальные строки с - в начале - пункты
+
+Верни полный обновлённый текст."""
     
-    has_number = re.search(r'\d+', message)
-    has_topic_words = any(w in msg_lower for w in ['слайд', 'презент', 'тема', 'про'])
-    
-    if has_number or has_topic_words or len(message.strip()) > 2:
-        topic, num_slides, color = extract_params(message)
-        return f"✅ Готово! Создал шаблон **«{topic}»** на {num_slides} слайдов ({color} тема). Шаблон появился в редакторе справа!"
-    
-    return "Напишите тему, например: «ромашка 5 слайдов»"
+    response = call_openai(api_key, prompt)
+    return response
 
 # ============================================================
 # ИНТЕРФЕЙС
@@ -382,17 +334,32 @@ st.set_page_config(page_title="ИИ Генератор презентаций", 
 
 st.title("🤖 ИИ Генератор презентаций")
 
+# Настройка API ключа
+with st.sidebar:
+    st.header("⚙️ Настройки")
+    api_key = st.text_input("OpenAI API Key:", type="password", help="Введите ваш API ключ OpenAI")
+    
+    if not api_key:
+        st.warning("️ Введите API ключ для работы ИИ")
+        st.info("Получить ключ: platform.openai.com/api-keys")
+
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
+if 'edit_history' not in st.session_state:
+    st.session_state.edit_history = []
 if 'generated_template' not in st.session_state:
     st.session_state.generated_template = ""
 
-col_chat, col_editor = st.columns([1, 1])
+# Три колонки
+col_gen, col_editor, col_edit = st.columns([1, 1.2, 1])
 
-with col_chat:
-    st.subheader("💬 Чат с ИИ")
+# ============================================================
+# КОЛОНКА 1: ГЕНЕРАЦИЯ
+# ============================================================
+with col_gen:
+    st.subheader("🎨 Генерация презентации")
     
-    chat_container = st.container(height=400)
+    chat_container = st.container(height=300)
     with chat_container:
         for msg in st.session_state.chat_history:
             if msg['role'] == 'user':
@@ -400,106 +367,177 @@ with col_chat:
             else:
                 st.chat_message("assistant").write(msg['content'])
     
-    user_input = st.chat_input("Напишите тему, например: ромашка 5 слайдов")
+    user_input = st.chat_input("Тема и кол-во слайдов")
     
     if user_input:
+        if not api_key:
+            st.session_state.chat_history.append({'role': 'user', 'content': user_input})
+            st.session_state.chat_history.append({'role': 'assistant', 'content': '❌ Сначала введите API ключ в настройках слева!'})
+            st.rerun()
+        
         st.session_state.chat_history.append({'role': 'user', 'content': user_input})
         
-        topic, num_slides, color = extract_params(user_input)
-        template = generate_template(topic, num_slides, color)
-        st.session_state.generated_template = template
+        # Парсим запрос
+        msg_lower = user_input.lower()
+        num_match = re.search(r'(\d+)\s*слайд', msg_lower)
+        num_slides = int(num_match.group(1)) if num_match else 5
         
-        response = ai_response(user_input)
-        st.session_state.chat_history.append({'role': 'assistant', 'content': response})
+        color_theme = "blue"
+        if any(w in msg_lower for w in ['красн', 'red']):
+            color_theme = "red"
+        elif any(w in msg_lower for w in ['зелён', 'green', 'зелен']):
+            color_theme = "green"
+        elif any(w in msg_lower for w in ['фиолет', 'purple']):
+            color_theme = "purple"
+        elif any(w in msg_lower for w in ['тёмн', 'dark', 'темн', 'чёрн', 'черн']):
+            color_theme = "dark"
         
-        st.rerun()
-    
-    st.markdown("**⚡ Быстрые команды:**")
-    col_btn1, col_btn2, col_btn3 = st.columns(3)
-    
-    with col_btn1:
-        if st.button("🌼 Ромашка", use_container_width=True):
-            msg = "ромашка 5 слайдов"
-            st.session_state.chat_history.append({'role': 'user', 'content': msg})
-            topic, num, color = extract_params(msg)
-            st.session_state.generated_template = generate_template(topic, num, color)
-            st.session_state.chat_history.append({'role': 'assistant', 'content': ai_response(msg)})
-            st.rerun()
-    
-    with col_btn2:
-        if st.button(" Моцарт", use_container_width=True):
-            msg = "моцарт 6 слайдов"
-            st.session_state.chat_history.append({'role': 'user', 'content': msg})
-            topic, num, color = extract_params(msg)
-            st.session_state.generated_template = generate_template(topic, num, color)
-            st.session_state.chat_history.append({'role': 'assistant', 'content': ai_response(msg)})
-            st.rerun()
-    
-    with col_btn3:
-        if st.button(" Джокер", use_container_width=True):
-            msg = "джокер 5 слайдов"
-            st.session_state.chat_history.append({'role': 'user', 'content': msg})
-            topic, num, color = extract_params(msg)
-            st.session_state.generated_template = generate_template(topic, num, color)
-            st.session_state.chat_history.append({'role': 'assistant', 'content': ai_response(msg)})
-            st.rerun()
-    
-    if st.button("🗑️ Очистить чат", use_container_width=True):
-        st.session_state.chat_history = []
-        st.session_state.generated_template = ""
+        topic = user_input
+        remove_words = ['сделай', 'создай', 'генерируй', 'презентацию', 'презентация', 'слайдов', 'слайд', 'про', 'на', 'тему']
+        for word in remove_words:
+            topic = topic.replace(word, '')
+        topic = re.sub(r'\d+', '', topic).strip(' ,.-–—!?:;')
+        topic = ' '.join(topic.split())
+        if not topic:
+            topic = "Презентация"
+        topic = topic[0].upper() + topic[1:]
+        
+        with st.spinner('ИИ генерирует презентацию...'):
+            template, error = generate_presentation_with_ai(api_key, topic, num_slides, color_theme)
+        
+        if error:
+            st.session_state.chat_history.append({'role': 'assistant', 'content': f'❌ {error}'})
+        else:
+            st.session_state.generated_template = template
+            st.session_state.chat_history.append({'role': 'assistant', 'content': f'✅ Готово! Создал презентацию «{topic}» на {num_slides} слайдов. Шаблон в редакторе справа!'})
+        
         st.rerun()
 
+# ============================================================
+# КОЛОНКА 2: РЕДАКТОР
+# ============================================================
 with col_editor:
     st.subheader("📝 Редактор шаблона")
     
     if st.session_state.generated_template:
         edited_template = st.text_area(
-            "Отредактируйте шаблон при необходимости:",
+            "Редактируйте текст:",
             value=st.session_state.generated_template,
-            height=500
+            height=600
         )
-    else:
-        edited_template = st.text_area(
-            "Здесь появится шаблон. Напишите тему в чате слева.",
-            value="",
-            height=500,
-            disabled=True
-        )
-    
-    if st.button("🎨 Создать презентацию", type="primary", use_container_width=True):
-        if edited_template.strip():
-            with st.spinner('Создаю презентацию...'):
-                slides = parse_template(edited_template)
-                
-                if not slides:
-                    st.error("❌ Не удалось разобрать шаблон!")
-                else:
-                    st.success(f"✅ Создано слайдов: {len(slides)}")
-                    pptx_data = create_presentation(slides)
+        
+        # Кнопки действий
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("💾 Сохранить изменения", use_container_width=True):
+                st.session_state.generated_template = edited_template
+                st.success("✅ Сохранено!")
+        
+        with col_btn2:
+            if st.button("🎨 Создать презентацию", type="primary", use_container_width=True):
+                with st.spinner('Создаю презентацию...'):
+                    slides = parse_template(edited_template)
                     
-                    st.download_button(
-                        label="📥 Скачать .pptx",
-                        data=pptx_data,
-                        file_name="presentation.pptx",
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                        use_container_width=True
-                    )
+                    if not slides:
+                        st.error("❌ Не удалось разобрать шаблон!")
+                    else:
+                        st.success(f"✅ Создано слайдов: {len(slides)}")
+                        pptx_data = create_presentation(slides)
+                        
+                        st.download_button(
+                            label=" Скачать .pptx",
+                            data=pptx_data,
+                            file_name="presentation.pptx",
+                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                            use_container_width=True
+                        )
+    else:
+        st.text_area("Здесь появится шаблон. Напишите тему слева.", value="", height=600, disabled=True)
+
+# ============================================================
+# КОЛОНКА 3: ИИ-РЕДАКТОР
+# ============================================================
+with col_edit:
+    st.subheader("✏️ ИИ-редактор текста")
+    
+    edit_container = st.container(height=300)
+    with edit_container:
+        for msg in st.session_state.edit_history:
+            if msg['role'] == 'user':
+                st.chat_message("user").write(msg['content'])
+            else:
+                st.chat_message("assistant").write(msg['content'])
+    
+    edit_input = st.chat_input("Как изменить текст?")
+    
+    if edit_input:
+        if not api_key:
+            st.session_state.edit_history.append({'role': 'user', 'content': edit_input})
+            st.session_state.edit_history.append({'role': 'assistant', 'content': '❌ Сначала введите API ключ!'})
+            st.rerun()
+        
+        if not st.session_state.generated_template:
+            st.session_state.edit_history.append({'role': 'user', 'content': edit_input})
+            st.session_state.edit_history.append({'role': 'assistant', 'content': '❌ Сначала создайте презентацию в левой колонке!'})
+            st.rerun()
+        
+        st.session_state.edit_history.append({'role': 'user', 'content': edit_input})
+        
+        with st.spinner('ИИ редактирует текст...'):
+            new_text = edit_text_with_ai(api_key, st.session_state.generated_template, edit_input)
+        
+        if new_text.startswith("Ошибка API:"):
+            st.session_state.edit_history.append({'role': 'assistant', 'content': f'❌ {new_text}'})
         else:
-            st.warning("⚠️ Сначала напишите тему в чате!")
+            st.session_state.generated_template = new_text
+            st.session_state.edit_history.append({'role': 'assistant', 'content': '✅ Текст обновлён! Изменения появились в редакторе.'})
+        
+        st.rerun()
+    
+    # Быстрые команды редактирования
+    st.markdown("**⚡ Быстрые команды:**")
+    
+    if st.button("Сделай текст короче", use_container_width=True):
+        if api_key and st.session_state.generated_template:
+            st.session_state.edit_history.append({'role': 'user', 'content': 'Сделай текст короче'})
+            new_text = edit_text_with_ai(api_key, st.session_state.generated_template, 'Сократи текст на каждом слайде, оставь только самое важное')
+            st.session_state.generated_template = new_text
+            st.session_state.edit_history.append({'role': 'assistant', 'content': '✅ Текст сокращён!'})
+            st.rerun()
+    
+    if st.button("Добавь больше фактов", use_container_width=True):
+        if api_key and st.session_state.generated_template:
+            st.session_state.edit_history.append({'role': 'user', 'content': 'Добавь больше фактов'})
+            new_text = edit_text_with_ai(api_key, st.session_state.generated_template, 'Добавь больше конкретных фактов, цифр и деталей на каждый слайд')
+            st.session_state.generated_template = new_text
+            st.session_state.edit_history.append({'role': 'assistant', 'content': '✅ Добавлены факты!'})
+            st.rerun()
+    
+    if st.button("Смени на красный цвет", use_container_width=True):
+        if st.session_state.generated_template:
+            new_text = st.session_state.generated_template
+            new_text = new_text.replace('#0a192f', '#2d0a0a').replace('#112240', '#4a0f0f').replace('#1a2f4a', '#6b1515').replace('#64ffda', '#ff6b6b').replace('#ccd6f6', '#ffd4d4')
+            st.session_state.generated_template = new_text
+            st.success('✅ Цвет изменён на красный!')
+            st.rerun()
 
 st.markdown("---")
 with st.expander("📖 Как пользоваться"):
     st.markdown("""
-    ### Простые примеры:
-    - **«ромашка 5 слайдов»** — создаст презентацию про ромашку
-    - **«моцарт 8 слайдов синяя тема»** — про Моцарта, синие слайды
-    - **«космос красная тема»** — про космос, красные слайды
-    - **«python 6 слайдов зелёная»** — про Python, зелёные слайды
+    ### Шаг 1: Введите API ключ
+    В панели слева введите ваш OpenAI API ключ.
     
-    ### Цветовые темы:
-    - Синяя (по умолчанию)
-    - Красная — напишите «красная»
-    - Зелёная — напишите «зелёная»
-    - Фиолетовая — напишите «фиолетовая»
-    - Тёмная — напишите «тёмная»
+    ### Шаг 2: Создайте презентацию
+    В левой колонке напишите тему, например: "квантовая физика 7 слайдов"
+    
+    ### Шаг 3: Отредактируйте текст
+    - В средней колонке можно редактировать вручную
+    - В правой колонке попросите ИИ изменить текст
+    
+    ### Примеры запросов ИИ-редактору:
+    - "Сделай текст короче"
+    - "Добавь больше фактов"
+    - "Переведи на английский"
+    - "Добавь слайд про историю"
     """)
