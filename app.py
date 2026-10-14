@@ -1,84 +1,70 @@
-import streamlit as st
+from flask import Flask, render_template, request, send_file
+from pptx import Presentation
+from pptx.util import Pt
+import io
 
-from text_parser import parse_text
-from pptx_generator import build_presentation
+app = Flask(__name__)
 
-st.set_page_config(page_title="Текст → Презентация", page_icon="📊", layout="wide")
+def generate_pptx(text_content):
+    """Функция создания презентации из текста"""
+    prs = Presentation()
+    
+    # Разбиваем текст на слайды. 
+    # Логика: Два переноса строки (\n\n) разделяют слайды.
+    # Первая строка блока - заголовок, остальные - пункты списка.
+    slides_raw = text_content.split('\n\n')
+    
+    for block in slides_raw:
+        lines = [line.strip() for line in block.split('\n') if line.strip()]
+        
+        if not lines:
+            continue
+            
+        # Используем макет "Заголовок и объект" (индекс 1)
+        slide_layout = prs.slide_layouts[1]
+        slide = prs.slides.add_slide(slide_layout)
+        
+        # Заголовок слайда
+        title = slide.shapes.title
+        title.text = lines[0]
+        
+        # Тело слайда (список)
+        body_shape = slide.placeholders[1]
+        tf = body_shape.text_frame
+        tf.clear() # Очистить дефолтный текст
+        
+        # Если есть только заголовок и нет пунктов, пропускаем добавление пунктов
+        if len(lines) > 1:
+            for point in lines[1:]:
+                p = tf.add_paragraph()
+                p.text = point
+                p.level = 0
+                p.font.size = Pt(24)
 
-st.title("📊 Текст → готовая презентация")
-st.caption("Введите тему и план обычным текстом — получите оформленный файл .pptx без единой строки кода.")
+    # Сохраняем в байтовый поток (в память), а не на диск
+    output = io.BytesIO()
+    prs.save(output)
+    output.seek(0)
+    return output
 
-with st.sidebar:
-    st.header("⚙️ Настройки")
-    author = st.text_input("Автор", "")
-    theme = st.selectbox(
-        "Тема оформления",
-        ["light", "dark"],
-        format_func=lambda x: "☀️ Светлая" if x == "light" else "🌙 Тёмная",
-    )
-    max_items = st.slider(
-        "Максимум пунктов на слайд", 3, 10, 6,
-        help="Если пунктов больше, слайд автоматически разделится на несколько.",
-    )
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        text_data = request.form.get('presentation_text')
+        
+        if text_data:
+            # Генерируем файл
+            pptx_file = generate_pptx(text_data)
+            
+            # Отправляем файл пользователю
+            return send_file(
+                pptx_file,
+                mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                as_attachment=True,
+                download_name='my_presentation.pptx'
+            )
+            
+    return render_template('index.html')
 
-    st.divider()
-    st.markdown(
-        "**Как писать текст**\n\n"
-        "- `# Название` — название презентации\n"
-        "- `## Заголовок` — новый слайд\n"
-        "- `- пункт` — пункт списка\n"
-        "- обычные строки — абзац текста\n\n"
-        "Без заголовков `##` каждый блок, отделённый пустой строкой, станет отдельным слайдом."
-    )
-
-EXAMPLE_TEXT = """# Как начать заниматься спортом
-Практический план на первый месяц
-
-## Зачем это нужно
-- Больше энергии в течение дня
-- Крепче сон и лучше настроение
-- Меньше риск хронических болезней
-
-## С чего начать
-- Выберите вид активности, который нравится
-- Начните с 20–30 минут три раза в неделю
-- Запланируйте тренировки в календаре
-
-## Типичные ошибки
-- Слишком большая нагрузка в первые дни
-- Отсутствие разминки
-- Ожидание быстрых результатов
-
-## Итоги
-Регулярность важнее интенсивности. Маленькие шаги каждую неделю дают заметный результат уже через месяц.
-"""
-
-text = st.text_area(
-    "Текст презентации:",
-    value=EXAMPLE_TEXT,
-    height=420,
-)
-
-if st.button("🚀 Создать презентацию", type="primary", use_container_width=True):
-    try:
-        deck = parse_text(text)
-        pptx_buffer = build_presentation(
-            deck,
-            author=author.strip(),
-            theme_name=theme,
-            max_items_per_slide=max_items,
-        )
-        st.success(f"✅ Готово: {len(deck.slides)} слайдов с материалом + титульный и финальный.")
-        safe_name = "".join(c for c in deck.title if c.isalnum() or c in " _-").strip().replace(" ", "_")[:50]
-        st.download_button(
-            label="⬇️ Скачать презентацию (.pptx)",
-            data=pptx_buffer,
-            file_name=f"{safe_name or 'presentation'}.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            type="primary",
-            use_container_width=True,
-        )
-    except ValueError as e:
-        st.error(f"❌ {e}")
-    except Exception as e:
-        st.error(f"💥 Неожиданная ошибка: {e}")
+if __name__ == '__main__':
+    app.run(debug=True)
