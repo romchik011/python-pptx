@@ -3,80 +3,144 @@ from pptx import Presentation
 from pptx.util import Pt
 import io
 
-def generate_pptx(text_content):
-    """Функция создания презентации из текста"""
+# ТЕКСТ ДЛЯ СЛАЙДОВ (здесь НЕТ кода, только обычные слова)
+SLIDES_DATA = {
+    "🐍 О языке Python": [
+        ("Что такое Python?", [
+            "Python — это язык программирования",
+            "Создан в 1991 году",
+            "Один из самых популярных в мире",
+            "Используется в веб-разработке и AI"
+        ]),
+        ("Преимущества Python", [
+            "Простой и понятный синтаксис",
+            "Большое сообщество разработчиков",
+            "Много готовых библиотек",
+            "Работает на всех системах"
+        ]),
+        ("Где применяется", [
+            "Создание сайтов",
+            "Искусственный интеллект",
+            "Анализ данных",
+            "Автоматизация задач"
+        ])
+    ],
+    "🚀 О космосе": [
+        ("Солнечная система", [
+            "Солнце — звезда в центре",
+            "Восемь планет вокруг Солнца",
+            "Земля — наш дом",
+            "Есть астероиды и кометы"
+        ]),
+        ("Исследование космоса", [
+            "Первый спутник запущен в 1957",
+            "Гагарин полетел в космос в 1961",
+            "Сегодня работает МКС",
+            "Планы — полёт на Марс"
+        ]),
+        ("Звёзды и галактики", [
+            "Звёзды — огромные шары газа",
+            "Наша галактика — Млечный Путь",
+            "Во Вселенной триллионы галактик",
+            "Космос бесконечен"
+        ])
+    ],
+    "💼 О бизнесе": [
+        ("Наша компания", [
+            "Работаем с 2020 года",
+            "Команда из 50 человек",
+            "Офисы в трёх городах",
+            "Более 100 клиентов"
+        ]),
+        ("Наши услуги", [
+            "Разработка сайтов",
+            "Мобильные приложения",
+            "Дизайн и маркетинг",
+            "Консультации"
+        ]),
+        ("Контакты", [
+            "Email: info@example.com",
+            "Телефон: +7 999 123-45-67",
+            "Адрес: Москва, ул. Примерная, 1",
+            "Сайт: example.com"
+        ])
+    ]
+}
+
+def create_presentation(title, slides):
     prs = Presentation()
     
-    # Разбиваем текст на слайды по двойному переносу строки
-    slides_raw = text_content.split('\n\n')
+    # Титульный слайд
+    slide = prs.slides.add_slide(prs.slide_layouts[0])
+    slide.shapes.title.text = title
+    slide.placeholders[1].text = "Автоматическая презентация"
     
-    for block in slides_raw:
-        lines = [line.strip() for line in block.split('\n') if line.strip()]
+    # Слайды с текстом
+    for slide_title, points in slides:
+        slide = prs.slides.add_slide(prs.slide_layouts[1])
+        slide.shapes.title.text = slide_title
         
-        if not lines:
-            continue
-            
-        # Используем макет "Заголовок и объект" (индекс 1)
-        slide_layout = prs.slide_layouts[1]
-        slide = prs.slides.add_slide(slide_layout)
+        body = slide.placeholders[1]
+        tf = body.text_frame
+        tf.clear()
         
-        # Заголовок слайда
-        title = slide.shapes.title
-        title.text = lines[0]
-        
-        # Тело слайда (список)
-        body_shape = slide.placeholders[1]
-        tf = body_shape.text_frame
-        tf.clear() 
-        
-        if len(lines) > 1:
-            for point in lines[1:]:
-                p = tf.add_paragraph()
-                p.text = point
-                p.level = 0
-                p.font.size = Pt(24)
-
-    # Сохраняем в байтовый поток
+        for point in points:
+            p = tf.add_paragraph()
+            p.text = point
+            p.font.size = Pt(22)
+    
+    # Финальный слайд
+    slide = prs.slides.add_slide(prs.slide_layouts[0])
+    slide.shapes.title.text = "Спасибо за внимание!"
+    slide.placeholders[1].text = "Вопросы?"
+    
     output = io.BytesIO()
     prs.save(output)
     output.seek(0)
     return output
 
-# --- Интерфейс Streamlit ---
+# === ИНТЕРФЕЙС САЙТА ===
+st.set_page_config(page_title="Генератор презентаций", page_icon="📊")
 
-st.set_page_config(page_title="Генератор Презентаций", page_icon="📊")
+st.title("📊 Генератор презентаций")
+st.write("Выберите тему и скачайте готовую презентацию")
 
-st.title("📊 Генератор PowerPoint из текста")
+st.markdown("---")
 
-st.markdown("""
-**Как пользоваться:**
-1. Введите текст ниже.
-2. Первая строка блока — **Заголовок слайда**.
-3. Остальные строки — **пункты списка**.
-4. Оставьте **пустую строку** между слайдами.
-""")
+# Три кнопки для выбора темы
+col1, col2, col3 = st.columns(3)
 
-default_text = """Пример слайда 1
-Пункт 1
-Пункт 2
+with col1:
+    if st.button("🐍 Python", use_container_width=True):
+        st.session_state.topic = "🐍 О языке Python"
 
-Пример слайда 2
-Текст о чем-то важном
-Еще один пункт
-"""
+with col2:
+    if st.button("🚀 Космос", use_container_width=True):
+        st.session_state.topic = "🚀 О космосе"
 
-user_text = st.text_area("Введите текст для презентации:", value=default_text, height=300)
+with col3:
+    if st.button("💼 Бизнес", use_container_width=True):
+        st.session_state.topic = "💼 О бизнесе"
 
-if st.button("Сгенерировать и скачать .pptx"):
-    if user_text:
-        with st.spinner('Генерация презентации...'):
-            pptx_file = generate_pptx(user_text)
-            
+# Если тема выбрана - показываем кнопку скачивания
+if "topic" in st.session_state:
+    topic = st.session_state.topic
+    st.markdown("---")
+    st.success(f"✅ Выбрана тема: **{topic}**")
+    
+    # Показываем что будет в презентации
+    st.write("**Слайды в презентации:**")
+    for slide_title, _ in SLIDES_DATA[topic]:
+        st.write(f"• {slide_title}")
+    
+    # Кнопка скачивания
+    if st.button("📥 СКАЧАТЬ ПРЕЗЕНТАЦИЮ", type="primary", use_container_width=True):
+        pptx_data = create_presentation(topic, SLIDES_DATA[topic])
+        
         st.download_button(
-            label="📥 Скачать презентацию",
-            data=pptx_file,
-            file_name="my_presentation.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            label="💾 Скачать файл .pptx",
+            data=pptx_data,
+            file_name=f"{topic}.pptx",
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            use_container_width=True
         )
-    else:
-        st.warning("Пожалуйста, введите текст.")
