@@ -1,17 +1,13 @@
-from flask import Flask, render_template, request, send_file
+import streamlit as st
 from pptx import Presentation
 from pptx.util import Pt
 import io
-
-app = Flask(__name__)
 
 def generate_pptx(text_content):
     """Функция создания презентации из текста"""
     prs = Presentation()
     
-    # Разбиваем текст на слайды. 
-    # Логика: Два переноса строки (\n\n) разделяют слайды.
-    # Первая строка блока - заголовок, остальные - пункты списка.
+    # Разбиваем текст на слайды по двойному переносу строки
     slides_raw = text_content.split('\n\n')
     
     for block in slides_raw:
@@ -31,9 +27,8 @@ def generate_pptx(text_content):
         # Тело слайда (список)
         body_shape = slide.placeholders[1]
         tf = body_shape.text_frame
-        tf.clear() # Очистить дефолтный текст
+        tf.clear() 
         
-        # Если есть только заголовок и нет пунктов, пропускаем добавление пунктов
         if len(lines) > 1:
             for point in lines[1:]:
                 p = tf.add_paragraph()
@@ -41,30 +36,47 @@ def generate_pptx(text_content):
                 p.level = 0
                 p.font.size = Pt(24)
 
-    # Сохраняем в байтовый поток (в память), а не на диск
+    # Сохраняем в байтовый поток
     output = io.BytesIO()
     prs.save(output)
     output.seek(0)
     return output
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        text_data = request.form.get('presentation_text')
-        
-        if text_data:
-            # Генерируем файл
-            pptx_file = generate_pptx(text_data)
-            
-            # Отправляем файл пользователю
-            return send_file(
-                pptx_file,
-                mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                as_attachment=True,
-                download_name='my_presentation.pptx'
-            )
-            
-    return render_template('index.html')
+# --- Интерфейс Streamlit ---
 
-if __name__ == '__main__':
-    app.run(debug=True)
+st.set_page_config(page_title="Генератор Презентаций", page_icon="📊")
+
+st.title("📊 Генератор PowerPoint из текста")
+
+st.markdown("""
+**Как пользоваться:**
+1. Введите текст ниже.
+2. Первая строка блока — **Заголовок слайда**.
+3. Остальные строки — **пункты списка**.
+4. Оставьте **пустую строку** между слайдами.
+""")
+
+default_text = """Пример слайда 1
+Пункт 1
+Пункт 2
+
+Пример слайда 2
+Текст о чем-то важном
+Еще один пункт
+"""
+
+user_text = st.text_area("Введите текст для презентации:", value=default_text, height=300)
+
+if st.button("Сгенерировать и скачать .pptx"):
+    if user_text:
+        with st.spinner('Генерация презентации...'):
+            pptx_file = generate_pptx(user_text)
+            
+        st.download_button(
+            label="📥 Скачать презентацию",
+            data=pptx_file,
+            file_name="my_presentation.pptx",
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        )
+    else:
+        st.warning("Пожалуйста, введите текст.")
